@@ -1,0 +1,409 @@
+---
+title: "Impacto económico del Covid-19 según modelo de desarrollo de los países"
+subtitle: "Dairo Smith Quintero Vargas, Miguel Silla Ríos, Daniela Villa Arboleda, Carlos Corachan Pérez"
+author: "Universitat de València."
+date: "Diciembre de 2020"
+output: ioslides_presentation
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# 
+Impacto económico del Covid-19 según modelo de desarrollo de los países.
+
+## 
+
+Índice
+
+  1. Introducción
+  
+  2. Especialización productiva
+  
+  3. Demografía
+  
+  4. Empleo
+  
+  5. El PIB per cápita
+  
+  6. Las exportaciones
+  
+  7. Medidas de política fiscal en la pandemia.
+  
+  8. Conclusiones
+  
+  
+## 1. Introducción
+
+Vamos a estudiar el impacto económico que ha tenido la crisis del COVID-19 en algunos de los países miembros de la Unión europea, y verificar si el grado de efecto está relacionado con la especialización económica de cada región.
+
+Procedemos a repasar la estructura económica, los modelos de desarollo de cada región para saber con exactitud de qué tipo de país se va a hablar, por tanto se procede a un breve análisis de la situación de algunos de los países de la UE.
+
+## 2. Especialización productiva
+
+La evolución de la estructura sectorial del valor añadido conforme un pais se desarrolla es uno de los enfoques mas relevantes para determinar la especializacion productiva de un pais
+
+----
+
+```{r,  eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+library(eurostat)
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(WDI)
+#Se descarga la contribución de cada sector al total del PIB, obtenemos cuatro data frames, la contribución de la agricultura, industria, manufactura y sector servicios
+
+df_agr <- WDI(indicator =  "NV.AGR.TOTL.ZS", country = c('ESP','DEU','FRA', 'ITA'), start = 2016, end = 2019)
+
+df_ind <- WDI(indicator =  "NV.IND.TOTL.ZS", country = c('ESP','DEU','FRA', 'ITA'), start = 2016, end = 2019)
+
+df_mnf <- WDI(indicator =  "NV.IND.MANF.ZS", country = c('ESP','DEU','FRA', 'ITA'), start = 2016, end = 2019)
+
+df_serv<- WDI(indicator =  "NV.SRV.TOTL.ZS", country = c('ESP','DEU','FRA', 'ITA'), start = 2016, end = 2019)
+
+#unimos los cuatro dataframe
+
+df_sectores<- inner_join(df_agr,df_ind)
+
+df_sectores1<- inner_join(df_mnf, df_serv )
+
+df_sectores3<- inner_join(df_sectores,df_sectores1) 
+
+#Filtro la contribución de los cuatro sectores productivos en el año 2019, modifico los nombres de las variables
+df_sectores4<- df_sectores3 %>% rename(Agricultura = NV.AGR.TOTL.ZS, Industria = NV.IND.TOTL.ZS, Manufactura = NV.IND.MANF.ZS , Servicios=NV.SRV.TOTL.ZS)%>% select ("country", "year", "Agricultura", "Industria", "Manufactura", "Servicios")
+
+df_sect<- df_sectores4 %>% pivot_longer(cols = 3:6, names_to = "sectores")
+
+df_spain <- df_sectores4 %>% pivot_longer(cols = 3:6, names_to = "sectores")%>% filter(country== "Spain", year== 2019)
+
+df_germany<- df_sectores4 %>% pivot_longer(cols = 3:6, names_to = "sectores")%>% filter(country== "Germany", year== 2019)
+
+df_france<- df_sectores4 %>% pivot_longer(cols = 3:6, names_to = "sectores")%>% filter(country== "France", year== 2019)
+
+
+df_italy<- df_sectores4 %>% pivot_longer(cols = 3:6, names_to = "sectores")%>% filter(country== "Italy", year== 2019)
+
+
+
+
+
+
+
+#Gráficos de análisis para agricultura e industria
+
+ggplot(df_spain, aes(x="", y=value, fill=sectores)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0) + ggtitle("Distribución sectorial del PIB español")
+
+
+
+
+```
+
+----
+
+```{r,  eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(df_germany, aes(x="% sobre el output", y=value, fill=sectores)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0) + ggtitle("Distribución sectorial del PIB alemán")
+
+```
+
+## 3. Demografía
+
+A continuación vamos analizar dos variables demográficas importantes como son la población y el empleo, de algunos de los países más representativos de la UE durante la última década, en concreto durante el período 2007-2019, con el fn de conocer las distintas situaciónes de cada país en un entorno anteriór a la crisis sanitaria.
+(Datos obtenidos de eurostat)
+
+----
+
+```{r,  eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+library(eurostat)
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(plotly)
+
+
+#df_eurst <- search_eurostat("population", type = "all")
+
+#estos datos son losque utilizaré para graficas los niveles de población y empleo 
+
+my_table5 <- "naida_10_pe"
+
+eu_popemp_anu_int <- get_eurostat(my_table5 , time_format = "num")
+eu_popemp_anu_int <- label_eurostat(eu_popemp_anu_int)
+#export(eu_popemp_anu_int , "./datos/eurostat/poblacionempleo.csv" )
+
+#aqui voy a hacer este df tidy, para ello voy a utilizar pivot_wider para poner las variables como columnas, filtrar los paises  y fechas en los que estoy interesado. 
+
+df_popemp <- eu_popemp_anu_int  %>%  pivot_wider(names_from = na_item, 
+                                 values_from = values)
+df_popemp <- df_popemp %>% rename(fecha = time , unidad = unit , empleo_total=`Total employment domestic concept` , población_total=`Total population national concept`, país = geo)
+
+df_popemp <- na.omit(df_popemp)
+
+df_popemp <- df_popemp  %>% filter(país %in% c("Spain", "Italy","Germany (until 1990 former territory of the FRG)" ,"France", "Germany", "United Kingdom", "Poland" ,"Holland")) %>% filter(between(fecha  ,  2008,2019)) %>% mutate(población_total = (población_total/1000))
+
+
+aa <- ggplot(df_popemp , aes(fecha , población_total , color = país)) +theme_stata() + geom_line() +
+     labs(title = "Niveles de Població total" ,
+       caption = "Datos provenientes de la API eurostat",
+       y = "Población",
+       x = "Años") + geom_point() + theme(legend.position = "none")
+ggplotly(aa)
+
+
+     
+
+```
+
+
+## 4.Empleo
+
+```{r}
+bb <- ggplot(df_popemp , aes(fecha , empleo_total , color = país)) +theme_gray() + geom_line() +
+     labs(title = "Evolución del Empleo total de cada país" ,
+       caption = "Datos provenientes de la API eurostat",
+       y = "Empleo",
+       x = "Años") + geom_point() + theme(legend.position = "none")
+ggplotly(bb)
+```
+
+
+----
+
+Los niveles de empleo tienen distintas tendencias según el país. En Alemania, por ejemplo, han tenido una tendencia creciente a lo largo de todo el periódo, empezando con una cifra de alrededor de 40 mill de empleados en 2007, y terminando con apróximadamente 60 millones de empleados en 2019, mientras que en otros países como por ejemplo España, la recuperación de los niveles de empleo respecto de la anterior crisis de 2008 no empezó a ocurrir sino a partir de los años 2014-2015 y desde entonces habia una tendencia creciente en los niveles de empleo hasta el 2019,  al igual que el resto de países, algunos como Gran Bretaña o Francia incluso tenian niveles de empleo en 2019 muy superiores a los del 2007, con lo que podemos concluir que en 2019 ya se contaba con unos nivels de empleo relativamente elevados. 
+
+## 5. El PIB per cápita
+
+Con el actual modelo de desarrollo no estamos consiguiendo integrarnos con los países punteros de la UE. No hay diferencia casi entre ambos mapas, y es que en estos años de recuperación económica tras la crisis de 2008 los países han crecido al unísono y los que eran líderes económicos lo siguen siendo.
+El covid ha reducido los niveles de PIB per cápita en todas las zonas, pero este cambio no ha sido desequilibrado. Es decir, la desigualdad sigue igual.
+
+----
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(ggplot2)
+library(eurostat)
+library(DT)
+library(rio)
+```
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+contenido_eurostat <- get_eurostat_toc()
+
+PIBpc <- get_eurostat(id="sdg_08_10", time_format = "num")
+
+DF <- PIBpc %>% filter(time > 2010) %>% filter(geo %in% c("ES", "FR" , "DE", "IT", "SW", "UK" , "PL" ,  "NL"))%>% filter(unit == "CLV10_EUR_HAB")
+
+DF2019 <- DF %>% filter(time == 2019)
+DF2018 <- DF %>% filter(time == 2018)
+DF2011 <- DF %>% filter(time == 2011)
+
+
+
+df_x <- DF2019 %>% filter(time == "2019") %>%
+        mutate(cat = cut_to_classes(values, n = 7, decimals = 1))
+
+geometrias <- get_eurostat_geospatial(resolution = "20", nuts_level = "0")
+
+
+mapdata <- inner_join(geometrias, df_x, by = c("geo" = "geo"))
+
+PIBpc_mapa <- get_eurostat_geospatial(nuts_level = 0) %>%
+  right_join(DF2019) %>%
+  mutate(categorias = cut_to_classes(values, n=8, decimals=1))
+
+
+
+
+
+ggplot(PIBpc_mapa, aes(fill=categorias)) +
+  geom_sf(color = alpha("white", 1/2), alpha= 0.9) +
+  xlim(c(-20, 44)) +
+  ylim(c(35, 70)) +
+  labs(title = "PIB per capita 2019",
+       subtitle = "",
+       caption = "Source: Elaboracion propia",
+       fill= "Euros")+
+  theme_minimal()
+
+```
+
+---- 
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+df_x2011 <- DF2011 %>% filter(time == "2011") %>%
+        mutate(cat = cut_to_classes(values, n = 7, decimals = 1))
+
+geometrias11 <- get_eurostat_geospatial(resolution = "20", nuts_level = "0")
+
+
+mapdata11 <- inner_join(geometrias11, df_x2011, by = c("geo" = "geo"))
+
+PIBpc_mapa11 <- get_eurostat_geospatial(nuts_level = 0) %>%
+  right_join(DF2011) %>%
+  mutate(categorias = cut_to_classes(values, n=8, decimals=1))
+
+
+
+
+ggplot(PIBpc_mapa11, aes(fill=categorias)) +
+  geom_sf(color = alpha("white", 1/2), alpha= 0.9) +
+  xlim(c(-20, 44)) +
+  ylim(c(35, 70)) +
+  labs(title = "PIB per capita 2011",
+       subtitle = "",
+       caption = "Source: Elaboracion propia",
+       fill= "Euros")+
+  theme_minimal()
+
+
+```
+
+----
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+PIBpcSINETI <- get_eurostat(id="namq_10_pc", time_format = "num")
+PIBPC2020PC <-label_eurostat(PIBpcSINETI)
+
+DF2020pibpc <- PIBpcSINETI %>% filter(time == 2020.5) %>% filter(geo %in% c("ES", "FR" , "DE", "IT", "SW", "UK" , "PL" ,  "NL"))%>% filter(unit == "CLV10_EUR_HAB") %>%  filter(na_item == "B1GQ")
+
+
+
+
+
+df_xpib2020 <- DF2020pibpc %>% filter(time == "2020.5") %>%
+        mutate(cat = cut_to_classes(values, n = 7, decimals = 1))
+
+geometrias2020pib <- get_eurostat_geospatial(resolution = "20", nuts_level = "0")
+
+
+mapdata2020pib <- inner_join(geometrias2020pib, df_xpib2020, by = c("geo" = "geo"))
+
+PIBpc_mapa2020pib <- get_eurostat_geospatial(nuts_level = 0) %>%
+  right_join(DF2020pibpc) %>%
+  mutate(categorias = cut_to_classes(values, n=8, decimals=1))
+
+
+
+
+
+ggplot(PIBpc_mapa2020pib, aes(fill=categorias)) +
+  geom_sf(color = alpha("white", 1/2), alpha= 0.9) +
+  xlim(c(-20, 44)) +
+  ylim(c(35, 70)) +
+  labs(title = "PIB per capita 2020",
+       subtitle = "",
+       caption = "Source: Elaboracion propia",
+       fill= "Euros")+
+  theme_minimal()
+
+```
+
+## 6. Las exportaciones
+
+Los principales bienes exportados de Alemania son vehículos, maquinarias, productos químicos, productos electrónicos y productos farmacéuticos.
+
+Las exportaciones francesas sufrieron en el trimestre una caída del 25,5%, frente al descenso del 6,1% del primer trimestre.
+
+El caso de Reino Unido es más expecial, ya que no solo se ve afectado por la pandemia. El Brexit cada vez está más cerca, y la incertidumbre que esto genera provoca un mayor descenso de las exportaciones.
+
+----
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+contenido_eurostat <- get_eurostat_toc()
+export <- get_eurostat(id="namq_10_exi", time_format = "num")
+
+export_labels <- label_eurostat(export)
+
+DFexport_2019_5 <- export %>% filter(time == 2019.5) %>% filter(geo %in% c("ES", "FR" , "DE", "IT", "SW", "UK" , "PL" ,  "NL"))%>% filter(unit == "CP_MEUR") %>% filter(na_item == "P6") %>% filter(s_adj == "NSA")
+
+
+DFexport2020_50 <- export %>% filter(time == 2020.5) %>% filter(geo %in% c("ES", "FR" , "DE", "IT", "SW", "UK" , "PL" ,  "NL"))%>% filter(unit == "CP_MEUR") %>% filter(na_item == "P6") %>% filter(s_adj == "NSA")
+
+
+df_ex2019 <- DFexport_2019_5 %>% filter(time == "2019.5") %>%
+        mutate(cat = cut_to_classes(values, n = 7, decimals = 1))
+
+geometrias19 <- get_eurostat_geospatial(resolution = "20", nuts_level = "0")
+
+
+mapdata19 <- inner_join(geometrias19, df_ex2019, by = c("geo" = "geo"))
+
+MAPA_EXPORT_2019 <- get_eurostat_geospatial(nuts_level = 0) %>%
+  right_join(DFexport_2019_5) %>%
+  mutate(categorias = cut_to_classes(values, n=3, decimals=1))
+
+
+
+
+
+
+ggplot(MAPA_EXPORT_2019, aes(fill=categorias)) +
+  geom_sf(color = alpha("black", 1/2), alpha= 0.9) +
+  xlim(c(-20, 44)) +
+  ylim(c(35, 70)) +
+  labs(title = "Exportaciones 2019",
+       subtitle = "",
+       caption = "Source: Elaboracion propia",
+       fill= "Millones de euros")+
+  theme_dark()
+```
+
+---- 
+
+```{r eval= TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+df_ex2020<- DFexport2020_50 %>% filter(time == "2020.5") %>%
+        mutate(cat = cut_to_classes(values, n = 7, decimals = 1))
+
+geometrias20 <- get_eurostat_geospatial(resolution = "20", nuts_level = "0")
+
+
+mapdata20 <- inner_join(geometrias20, df_ex2020, by = c("geo" = "geo"))
+
+MAPA_EXPORT_2020 <- get_eurostat_geospatial(nuts_level = 0) %>%
+  right_join(DFexport2020_50) %>%
+  mutate(categorias = cut_to_classes(values, n=3, decimals=1))
+
+
+
+
+
+
+ggplot(MAPA_EXPORT_2020, aes(fill=categorias)) +
+  geom_sf(color = alpha("black", 1/2), alpha= 0.9) +
+  xlim(c(-20, 44)) +
+  ylim(c(35, 70)) +
+  labs(title = "Exportaciones 2020",
+       subtitle = "",
+       caption = "Source: Elaboracion propia",
+       fill= "Millones de euros")+
+  theme_dark()
+
+
+
+
+```
+
+## 7. Medidas de política fiscal en la pandemia.
+
+Podríamos distinguir dos fases en las medidas de política fiscal tomadas tanto en Alemania como en Francia y España. En la fase de contención del virus, la prioridad es mantener el tejido productivo de la economía y evitar que empresas eficientes quiebren o que empleados necesarios acaben desempleados. Los programas de ajuste temporal del empleo han sido en Alemania (Kurzarbeit), España (ERTE) y Francia (chômage partiel).
+Una vez pasada la crisis sanitaria, los esfuerzos deberán concentrarse en la recuperación económica. Pero, para conseguirlo, será necesario algo más que aumentar el gasto público. El shock económico ha sido tan fuerte que ya está suponiendo transformaciones estructurales en las economías. Por esta razón, las políticas deberían centrarse en la transformación económica y la reasignación de recursos.
+
+## 8. Conclusiones
+
+Podemos concluir que la especializacion economica de cada país influye, y de manera importante, en la recuperación de estos países tras la crisis actual. Viendo una estrecha relacion entre el grado de industralizacion de los paises, y mas concretamente de especializacion en industria pesada, farmaceutica y quimica, con la velocidad de recuperacion y el impacto de esta crisis.
+
+## ¿Alguna duda?
+
+![](./imagenes/covid.jpg)
+
+
+
+
